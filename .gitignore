@@ -1,0 +1,42 @@
+# Environment files (never commit secrets)
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+instance/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+dist/
+build/
+*.tsbuildinfo
+.vite/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker / data
+pgdata/
+postgres_data/
+
+# Logs
+*.log
+logs/
+
+# Alembic directives are committed; only local temp DBs are ignored.
+backend/*.db
