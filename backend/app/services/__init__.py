@@ -1,0 +1,1 @@
+from app.core.permissions import Role  # noqa: F401
