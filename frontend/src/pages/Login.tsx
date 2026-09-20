@@ -1,19 +1,10 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/Toast";
 import { Button, Card, FieldError, Input } from "@/components/ui";
 import { apiError } from "@/lib/utils";
-
-const schema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type FormValues = z.infer<typeof schema>;
 
 export default function Login() {
   const { login } = useAuth();
@@ -21,16 +12,29 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [busy, setBusy] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  // Controlled inputs (plain state) so browser autofill can never
+  // leave the form thinking a visibly-filled field is empty.
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    // Read straight from the DOM as well, in case a password manager
+    // filled the fields without firing React change events.
+    const form = e.currentTarget as HTMLFormElement;
+    const data = new FormData(form);
+    const u = username || String(data.get("username") ?? "").trim();
+    const p = password || String(data.get("password") ?? "");
+
+    setUsernameError(u ? "" : "Username is required");
+    setPasswordError(p ? "" : "Password is required");
+    if (!u || !p) return;
+
     setBusy(true);
     try {
-      await login(values.username, values.password);
+      await login(u, p);
       const from = (location.state as { from?: string } | null)?.from ?? "/dashboard";
       navigate(from, { replace: true });
     } catch (err) {
@@ -50,16 +54,37 @@ export default function Login() {
           <h1 className="text-xl font-bold text-slate-900">Library Management System</h1>
           <p className="mt-1 text-sm text-slate-500">Sign in with your staff account</p>
         </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label" htmlFor="username">Username</label>
-            <Input id="username" autoComplete="username" placeholder="admin" {...register("username")} />
-            <FieldError message={errors.username?.message} />
+            <Input
+              id="username"
+              name="username"
+              autoComplete="username"
+              placeholder="admin"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (usernameError) setUsernameError("");
+              }}
+            />
+            <FieldError message={usernameError} />
           </div>
           <div>
             <label className="label" htmlFor="password">Password</label>
-            <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" {...register("password")} />
-            <FieldError message={errors.password?.message} />
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (passwordError) setPasswordError("");
+              }}
+            />
+            <FieldError message={passwordError} />
           </div>
           <Button type="submit" className="w-full" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
