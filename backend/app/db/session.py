@@ -10,18 +10,20 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
+_db_url = settings.database_url_normalized
+
 connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
+if _db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    _db_url,
     echo=False,
-    pool_pre_ping=not settings.DATABASE_URL.startswith("sqlite"),
+    pool_pre_ping=not _db_url.startswith("sqlite"),
     connect_args=connect_args,
 )
 
-if settings.DATABASE_URL.startswith("sqlite"):
+if _db_url.startswith("sqlite"):
     # Enforce foreign key constraints even though SQLite disables them by default.
     @event.listens_for(engine, "connect")
     def _enable_sqlite_fk(dbapi_connection, _connection_record):  # pragma: no cover

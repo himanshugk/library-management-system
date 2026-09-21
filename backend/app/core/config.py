@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+psycopg://lms_user:lms_password@db:5432/lms_db"
 
+    @property
+    def database_url_normalized(self) -> str:
+        """Render gives postgres://, SQLAlchemy needs postgresql+psycopg://."""
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+psycopg://", 1)
+        if url.startswith("postgresql://"):
+            return url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return url
+
     # Security
     JWT_SECRET: str = "dev-secret-change-me"
     JWT_ALGORITHM: str = "HS256"
