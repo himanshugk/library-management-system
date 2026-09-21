@@ -61,12 +61,12 @@ export default function Layout() {
             onClick={() => setOpen(false)}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium sm:py-2 sm:text-sm",
                 isActive ? "bg-primary-600 text-white" : "text-slate-600 hover:bg-slate-100",
               )
             }
           >
-            <l.icon size={17} />
+            <l.icon size={18} />
             {l.label}
           </NavLink>
         ))}
@@ -113,15 +113,18 @@ export default function Layout() {
       <div className="lg:pl-60">
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
           <button
-            className="rounded-lg p-2 hover:bg-slate-100 lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 lg:hidden"
             onClick={() => setOpen(true)}
             aria-label="Open menu"
           >
             ☰
           </button>
-          <span className="text-sm font-medium text-slate-500">
+          <span className="truncate text-sm font-medium text-slate-500">
             {user?.staff_id} · {user?.role}
           </span>
+          <Link to="/transactions/issue" className="ml-auto lg:hidden">
+            <span className="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white">Issue</span>
+          </Link>
         </header>
         <main className="mx-auto max-w-6xl p-4 sm:p-6">
           <Outlet />
