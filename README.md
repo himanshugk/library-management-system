@@ -1,5 +1,7 @@
 # Library Management System
 
+> **Live Demo:** Frontend → https://library-management-system-dun-iota-40.vercel.app/ · Backend → https://lms-backend-6xi9.onrender.com · API Docs → https://lms-backend-6xi9.onrender.com/docs
+
 A beginner-friendly but production-structured **Library Management System** with a React frontend, FastAPI backend, and PostgreSQL database. It covers authentication, role-based access, book/category/student/staff management, a 20-day issue/return workflow, automatic overdue SMS notices, Rs 10/day fine calculation, fine payments, audit logs, automated tests, and Docker deployment.
 
 ## Architecture (beginner-friendly explanation)
@@ -136,10 +138,18 @@ Frontend: `npm run build` runs `tsc --noEmit` + Vite production build.
 7. **Fines** → record payment (partial, then full) → status `PAID`.
 8. **Audit Logs** → complete history of every step. **Docs** → try it live in Swagger.
 
+## Live Deployment
+
+- **Frontend (Vercel):** https://library-management-system-dun-iota-40.vercel.app/
+- **Backend (Render):** https://lms-backend-6xi9.onrender.com
+- **API Docs (Swagger):** https://lms-backend-6xi9.onrender.com/docs
+
+> Render free tier sleeps after inactivity — first request after idle may take ~30s.
+
 ## Deploying (beta)
 
-- **Backend → Render**: create a Web Service from `backend/` (build: `pip install -r requirements.txt`, start: `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`). Add a Render Postgres database, set `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS=https://<your-frontend>.vercel.app`, `AUTO_CREATE_TABLES=false`. Note: Render free tier sleeps — the overdue scheduler only runs while the service is awake.
-- **Frontend → Vercel**: import `frontend/`, build command `npm run build`, output `dist`, env `VITE_API_URL=https://<your-backend>.onrender.com`. SPA rewrites are in `frontend/vercel.json`.
+- **Backend → Render**: create a Web Service from `backend/` (build: `pip install -r requirements.txt`, start: `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`) or use the root `Dockerfile`. Add a Render Postgres database, set `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS=https://library-management-system-dun-iota-40.vercel.app`, `AUTO_CREATE_TABLES=false`. Or deploy via Blueprint using `render.yaml` at repo root.
+- **Frontend → Vercel**: import `frontend/`, build command `npm run build`, output `dist`, env `VITE_API_URL=https://lms-backend-6xi9.onrender.com`. SPA rewrites are in `frontend/vercel.json`.
 
 ## Future improvements (not built)
 
