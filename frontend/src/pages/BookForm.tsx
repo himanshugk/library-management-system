@@ -1,27 +1,11 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { booksApi, categoriesApi } from "@/services/api";
 import type { Category } from "@/types";
-import { Button, Card, ConfirmDialog, FieldError, Input, PageHeader, Spinner } from "@/components/ui";
+import { Button, Card, ConfirmDialog, Input, PageHeader, Spinner } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { apiError } from "@/lib/utils";
-
-const schema = z.object({
-  title: z.string().min(1, "Title is required"),
-  author: z.string().min(1, "Author is required"),
-  isbn: z.string().min(5, "ISBN must be at least 5 characters"),
-  category_id: z.coerce.number().int().positive("Category is required"),
-  publisher: z.string().optional(),
-  publication_year: z.coerce.number().int().min(1000).max(9999).optional().or(z.literal("")),
-  total_copies: z.coerce.number().int().min(0, "Total copies must be ≥ 0"),
-  shelf_location: z.string().optional(),
-  is_active: z.boolean().optional(),
-});
-
-type FormValues = z.infer<typeof schema>;
 
 export default function BookForm() {
   const { id } = useParams();
@@ -32,13 +16,18 @@ export default function BookForm() {
   const [loading, setLoading] = useState(isEdit);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [form, setForm] = useState({
+    title: "",
+    author: "",
+    isbn: "",
+    category_id: "",
+    publisher: "",
+    publication_year: "",
+    total_copies: "1",
+    shelf_location: "",
+    is_active: true,
+  });
 
   useEffect(() => {
     categoriesApi
@@ -49,14 +38,14 @@ export default function BookForm() {
       booksApi
         .get(id)
         .then((b) =>
-          reset({
+          setForm({
             title: b.title,
             author: b.author,
             isbn: b.isbn,
-            category_id: b.category_id,
+            category_id: String(b.category_id),
             publisher: b.publisher ?? "",
-            publication_year: (b.publication_year ?? "") as never,
-            total_copies: b.total_copies,
+            publication_year: b.publication_year ? String(b.publication_year) : "",
+            total_copies: String(b.total_copies),
             shelf_location: b.shelf_location ?? "",
             is_active: b.is_active,
           }),
@@ -67,20 +56,53 @@ export default function BookForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function onSubmit(values: FormValues) {
+  function update(field: string, value: string | boolean) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget as HTMLFormElement);
+    const title = form.title || String(fd.get("title") ?? "").trim();
+    const author = form.author || String(fd.get("author") ?? "").trim();
+    const isbn = form.isbn || String(fd.get("isbn") ?? "").trim();
+    const category_id = form.category_id || String(fd.get("category_id") ?? "").trim();
+    const publisher = form.publisher || String(fd.get("publisher") ?? "").trim();
+    const publication_year = form.publication_year || String(fd.get("publication_year") ?? "").trim();
+    const total_copies = form.total_copies || String(fd.get("total_copies") ?? "").trim();
+    const shelf_location = form.shelf_location || String(fd.get("shelf_location") ?? "").trim();
+
+    const errs: Record<string, string> = {};
+    if (!title) errs.title = "Title is required";
+    if (!author) errs.author = "Author is required";
+    if (!isbn || isbn.length < 5) errs.isbn = "ISBN must be at least 5 characters";
+    if (!category_id) errs.category_id = "Category is required";
+    if (total_copies === "" || Number.isNaN(Number(total_copies)) || Number(total_copies) < 0)
+      errs.total_copies = "Total copies must be ≥ 0";
+    if (publication_year && (Number(publication_year) < 1000 || Number(publication_year) > 9999))
+      errs.publication_year = "Invalid year";
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
     setBusy(true);
     try {
-      const payload = {
-        ...values,
-        publisher: values.publisher || undefined,
-        shelf_location: values.shelf_location || undefined,
-        publication_year: values.publication_year === "" ? undefined : values.publication_year,
+      const payload: Record<string, unknown> = {
+        title,
+        author,
+        isbn,
+        category_id: Number(category_id),
+        publisher: publisher || undefined,
+        publication_year: publication_year ? Number(publication_year) : undefined,
+        total_copies: Number(total_copies),
+        shelf_location: shelf_location || undefined,
+        is_active: form.is_active,
       };
       if (isEdit && id) {
-        await booksApi.update(id, payload as Record<string, unknown>);
+        await booksApi.update(id, payload);
         toast("Book updated.", "success");
       } else {
-        await booksApi.create(payload as Record<string, unknown>);
+        await booksApi.create(payload);
         toast("Book created.", "success");
       }
       navigate("/books");
@@ -112,25 +134,30 @@ export default function BookForm() {
     <div>
       <PageHeader title={isEdit ? `Edit book ${id}` : "Add book"} />
       <Card>
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label">Title *</label>
-            <Input {...register("title")} />
-            <FieldError message={errors.title?.message} />
+            <Input name="title" value={form.title} onChange={(e) => update("title", e.target.value)} />
+            {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
           </div>
           <div>
             <label className="label">Author *</label>
-            <Input {...register("author")} />
-            <FieldError message={errors.author?.message} />
+            <Input name="author" value={form.author} onChange={(e) => update("author", e.target.value)} />
+            {errors.author && <p className="mt-1 text-xs text-red-600">{errors.author}</p>}
           </div>
           <div>
             <label className="label">ISBN * (10 or 13 digits)</label>
-            <Input {...register("isbn")} />
-            <FieldError message={errors.isbn?.message} />
+            <Input name="isbn" value={form.isbn} onChange={(e) => update("isbn", e.target.value)} />
+            {errors.isbn && <p className="mt-1 text-xs text-red-600">{errors.isbn}</p>}
           </div>
           <div>
             <label className="label">Category *</label>
-            <select className="input" {...register("category_id")}>
+            <select
+              name="category_id"
+              className="input"
+              value={form.category_id}
+              onChange={(e) => update("category_id", e.target.value)}
+            >
               <option value="">Select…</option>
               {categories
                 .filter((c) => c.is_active)
@@ -140,29 +167,50 @@ export default function BookForm() {
                   </option>
                 ))}
             </select>
-            <FieldError message={errors.category_id?.message} />
+            {errors.category_id && <p className="mt-1 text-xs text-red-600">{errors.category_id}</p>}
           </div>
           <div>
             <label className="label">Publisher</label>
-            <Input {...register("publisher")} />
+            <Input name="publisher" value={form.publisher} onChange={(e) => update("publisher", e.target.value)} />
           </div>
           <div>
             <label className="label">Publication year</label>
-            <Input type="number" {...register("publication_year")} />
-            <FieldError message={errors.publication_year?.message} />
+            <Input
+              name="publication_year"
+              type="number"
+              value={form.publication_year}
+              onChange={(e) => update("publication_year", e.target.value)}
+            />
+            {errors.publication_year && <p className="mt-1 text-xs text-red-600">{errors.publication_year}</p>}
           </div>
           <div>
             <label className="label">Total copies *</label>
-            <Input type="number" min={0} {...register("total_copies")} />
-            <FieldError message={errors.total_copies?.message} />
+            <Input
+              name="total_copies"
+              type="number"
+              min={0}
+              value={form.total_copies}
+              onChange={(e) => update("total_copies", e.target.value)}
+            />
+            {errors.total_copies && <p className="mt-1 text-xs text-red-600">{errors.total_copies}</p>}
           </div>
           <div>
             <label className="label">Shelf / location</label>
-            <Input {...register("shelf_location")} />
+            <Input
+              name="shelf_location"
+              value={form.shelf_location}
+              onChange={(e) => update("shelf_location", e.target.value)}
+            />
           </div>
           {isEdit && (
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="is_active" {...register("is_active")} checked={watch("is_active")} />
+              <input
+                type="checkbox"
+                id="is_active"
+                name="is_active"
+                checked={form.is_active}
+                onChange={(e) => update("is_active", e.target.checked)}
+              />
               <label htmlFor="is_active" className="text-sm text-slate-700">
                 Active (uncheck to disable)
               </label>

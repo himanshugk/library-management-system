@@ -1,36 +1,35 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { transactionsApi } from "@/services/api";
 import type { Transaction } from "@/types";
-import { Button, Card, FieldError, Input, PageHeader } from "@/components/ui";
+import { Button, Card, Input, PageHeader } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { apiError, formatDate } from "@/lib/utils";
-
-const schema = z.object({
-  student_id: z.string().min(1, "Student ID is required (e.g. STU-000001)"),
-  book_id: z.string().min(1, "Book ID is required (e.g. BOOK-000001)"),
-});
-
-type FormValues = z.infer<typeof schema>;
 
 export default function IssueBook() {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Transaction | null>(null);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const [form, setForm] = useState({ student_id: "", book_id: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget as HTMLFormElement);
+    const student_id = (form.student_id || String(fd.get("student_id") ?? "")).trim();
+    const book_id = (form.book_id || String(fd.get("book_id") ?? "")).trim();
+
+    const errs: Record<string, string> = {};
+    if (!student_id) errs.student_id = "Student ID is required (e.g. STU-000001)";
+    if (!book_id) errs.book_id = "Book ID is required (e.g. BOOK-000001)";
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
     setBusy(true);
     setResult(null);
     try {
-      const txn = await transactionsApi.issue(values.student_id.trim(), values.book_id.trim());
+      const txn = await transactionsApi.issue(student_id, book_id);
       setResult(txn);
       toast(`Issued. Due on ${formatDate(txn.due_date)} (20-day loan).`, "success");
     } catch (err) {
@@ -45,16 +44,26 @@ export default function IssueBook() {
       <PageHeader title="Issue a book" subtitle="Due date = issue date + 20 days, calculated by the backend" />
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <label className="label">Student ID *</label>
-              <Input placeholder="STU-000001" {...register("student_id")} />
-              <FieldError message={errors.student_id?.message} />
+              <Input
+                name="student_id"
+                placeholder="STU-000001"
+                value={form.student_id}
+                onChange={(e) => setForm({ ...form, student_id: e.target.value })}
+              />
+              {errors.student_id && <p className="mt-1 text-xs text-red-600">{errors.student_id}</p>}
             </div>
             <div>
               <label className="label">Book ID *</label>
-              <Input placeholder="BOOK-000001" {...register("book_id")} />
-              <FieldError message={errors.book_id?.message} />
+              <Input
+                name="book_id"
+                placeholder="BOOK-000001"
+                value={form.book_id}
+                onChange={(e) => setForm({ ...form, book_id: e.target.value })}
+              />
+              {errors.book_id && <p className="mt-1 text-xs text-red-600">{errors.book_id}</p>}
             </div>
             <Button type="submit" disabled={busy}>
               {busy ? "Issuing…" : "Issue book"}

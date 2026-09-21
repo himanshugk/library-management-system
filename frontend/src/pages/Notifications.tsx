@@ -30,13 +30,15 @@ export default function Notifications() {
   }, []);
 
   async function sendTest() {
-    if (!studentId.trim()) {
+    const effId = studentId.trim() || (document.querySelector('input[name="studentId"]') as HTMLInputElement | null)?.value?.trim() || "";
+    const effMsg = message || (document.querySelector('input[name="message"]') as HTMLInputElement | null)?.value || undefined;
+    if (!effId) {
       toast("Enter a student ID first.", "error");
       return;
     }
     setBusy(true);
     try {
-      await notificationsApi.test(studentId.trim(), message || undefined);
+      await notificationsApi.test(effId, effMsg);
       toast("Test notification sent.", "success");
       setMessage("");
       await load();
@@ -55,8 +57,8 @@ export default function Notifications() {
       <div className="card mb-4 p-4">
         <h2 className="text-sm font-semibold">Send a test SMS</h2>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          <Input placeholder="STU-000001" value={studentId} onChange={(e) => setStudentId(e.target.value)} />
-          <Input placeholder="Optional custom message" value={message} onChange={(e) => setMessage(e.target.value)} />
+          <Input name="studentId" placeholder="STU-000001" value={studentId} onChange={(e) => setStudentId(e.target.value)} />
+          <Input name="message" placeholder="Optional custom message" value={message} onChange={(e) => setMessage(e.target.value)} />
           <Button onClick={sendTest} disabled={busy}>
             {busy ? "Sending…" : "Send test"}
           </Button>

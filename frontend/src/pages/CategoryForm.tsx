@@ -1,34 +1,34 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { categoriesApi } from "@/services/api";
-import { Button, Card, FieldError, Input, PageHeader } from "@/components/ui";
+import { Button, Card, Input, PageHeader } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { apiError } from "@/lib/utils";
-
-const schema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof schema>;
 
 export default function CategoryForm() {
   const navigate = useNavigate();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState("");
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const data = new FormData(form);
+    const n = name || String(data.get("name") ?? "").trim();
+    const d = description || String(data.get("description") ?? "").trim();
+
+    if (!n) {
+      setError("Name is required");
+      return;
+    }
+    setError("");
     setBusy(true);
     try {
-      await categoriesApi.create(values);
+      await categoriesApi.create({ name: n, description: d || undefined });
       toast("Category created.", "success");
       navigate("/categories");
     } catch (err) {
@@ -42,15 +42,29 @@ export default function CategoryForm() {
     <div>
       <PageHeader title="Add category" />
       <Card className="max-w-lg">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="label">Name *</label>
-            <Input placeholder="e.g. Programming" {...register("name")} />
-            <FieldError message={errors.name?.message} />
+            <label className="label" htmlFor="name">Name *</label>
+            <Input
+              id="name"
+              name="name"
+              placeholder="e.g. Programming"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (error) setError("");
+              }}
+            />
+            {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
           </div>
           <div>
-            <label className="label">Description</label>
-            <Input {...register("description")} />
+            <label className="label" htmlFor="description">Description</label>
+            <Input
+              id="description"
+              name="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={busy}>

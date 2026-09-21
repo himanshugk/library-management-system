@@ -1,22 +1,10 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { staffApi } from "@/services/api";
-import { Button, Card, ConfirmDialog, FieldError, Input, Modal, PageHeader, Spinner } from "@/components/ui";
+import { Button, Card, ConfirmDialog, Input, Modal, PageHeader, Spinner } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { apiError } from "@/lib/utils";
-
-const createSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  phone: z.string().optional(),
-});
-
-type CreateValues = z.infer<typeof createSchema>;
 
 export default function StaffForm() {
   const { id } = useParams();
@@ -29,31 +17,46 @@ export default function StaffForm() {
   const [confirmStatus, setConfirmStatus] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<CreateValues>({ resolver: zodResolver(createSchema) });
+  const [form, setForm] = useState({ name: "", email: "", username: "", password: "", phone: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) {
       staffApi
         .get(id)
-        .then((s) => {
-          reset({ name: s.name, email: s.email, username: "", password: "********", phone: s.phone ?? "" });
-          setIsActive(s.is_active);
-        })
+        .then((s) => setIsActive(s.is_active))
         .catch((err) => toast(apiError(err, "Failed to load staff."), "error"))
         .finally(() => setLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function onCreate(values: CreateValues) {
+  function update(field: string, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  }
+
+  async function onCreate(e: FormEvent) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget as HTMLFormElement);
+    const name = (form.name || String(fd.get("name") ?? "")).trim();
+    const email = (form.email || String(fd.get("email") ?? "")).trim();
+    const username = (form.username || String(fd.get("username") ?? "")).trim();
+    const password = form.password || String(fd.get("password") ?? "");
+    const phone = (form.phone || String(fd.get("phone") ?? "")).trim();
+
+    const errs: Record<string, string> = {};
+    if (!name) errs.name = "Name is required";
+    if (!email) errs.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Invalid email";
+    if (!username || username.length < 3) errs.username = "Username must be at least 3 characters";
+    if (!password || password.length < 8) errs.password = "Password must be at least 8 characters";
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
     setBusy(true);
     try {
-      const created = await staffApi.create(values as Record<string, unknown>);
+      const created = await staffApi.create({ name, email, username, password, phone: phone || undefined });
       toast(`Staff created: ${created.staff_id}`, "success");
       navigate("/staff");
     } catch (err) {
@@ -103,30 +106,30 @@ export default function StaffForm() {
       <PageHeader title={isEdit ? `Manage staff ${id}` : "Add staff"} subtitle={isEdit ? undefined : "Staff ID is generated automatically"} />
       {!isEdit ? (
         <Card className="max-w-2xl">
-          <form onSubmit={handleSubmit(onCreate)} className="grid gap-4 sm:grid-cols-2">
+          <form onSubmit={onCreate} className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Full name *</label>
-              <Input {...register("name")} />
-              <FieldError message={errors.name?.message} />
+              <Input name="name" value={form.name} onChange={(e) => update("name", e.target.value)} />
+              {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
             </div>
             <div>
               <label className="label">Email *</label>
-              <Input {...register("email")} />
-              <FieldError message={errors.email?.message} />
+              <Input name="email" value={form.email} onChange={(e) => update("email", e.target.value)} />
+              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
             </div>
             <div>
               <label className="label">Username *</label>
-              <Input {...register("username")} />
-              <FieldError message={errors.username?.message} />
+              <Input name="username" value={form.username} onChange={(e) => update("username", e.target.value)} />
+              {errors.username && <p className="mt-1 text-xs text-red-600">{errors.username}</p>}
             </div>
             <div>
               <label className="label">Password * (min 8 chars)</label>
-              <Input type="password" {...register("password")} />
-              <FieldError message={errors.password?.message} />
+              <Input name="password" type="password" value={form.password} onChange={(e) => update("password", e.target.value)} />
+              {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
             </div>
             <div className="sm:col-span-2">
               <label className="label">Phone</label>
-              <Input {...register("phone")} />
+              <Input name="phone" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
             </div>
             <div className="flex gap-2 sm:col-span-2">
               <Button type="submit" disabled={busy}>
