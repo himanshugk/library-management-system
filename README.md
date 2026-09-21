@@ -1,80 +1,193 @@
-# Library Management System
+<div align="center">
 
-> **Live Demo:** Frontend → https://library-management-system-dun-iota-40.vercel.app/ · Backend → https://lms-backend-6xi9.onrender.com · API Docs → https://lms-backend-6xi9.onrender.com/docs
+# 📚 Library Management System
 
-A beginner-friendly but production-structured **Library Management System** with a React frontend, FastAPI backend, and PostgreSQL database. It covers authentication, role-based access, book/category/student/staff management, a 20-day issue/return workflow, automatic overdue SMS notices, Rs 10/day fine calculation, fine payments, audit logs, automated tests, and Docker deployment.
+**A production-structured LMS that is still easy for beginners to read**
 
-## Architecture (beginner-friendly explanation)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://library-management-system-dun-iota-40.vercel.app/)
+[![API Docs](https://img.shields.io/badge/API%20Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger)](https://lms-backend-6xi9.onrender.com/docs)
+[![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render)](https://lms-backend-6xi9.onrender.com)
+
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](./frontend)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi)](./backend)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)](./backend)
+[![Tests](https://img.shields.io/badge/Tests-59%20passing-brightgreen?logo=pytest)](./backend/tests)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](./docker-compose.yml)
+
+*React + FastAPI + PostgreSQL · 20-day loans · Auto overdue SMS · Rs 10/day fines · Works on PC & Phone*
+
+[🚀 Live Frontend](https://library-management-system-dun-iota-40.vercel.app/) · [⚙️ Live Backend](https://lms-backend-6xi9.onrender.com) · [📖 Swagger](https://lms-backend-6xi9.onrender.com/docs) · [🐳 Docker](#-docker-one-command-startup)
+
+</div>
+
+---
+
+## ✨ Live Demo
+
+| | Link | What you get |
+|---|---|---|
+| **Frontend** | **https://library-management-system-dun-iota-40.vercel.app/** | Full app — login and try every flow on PC or phone |
+| **Backend** | **https://lms-backend-6xi9.onrender.com** | REST API |
+| **Swagger** | **https://lms-backend-6xi9.onrender.com/docs** | Try all endpoints live |
+
+> ⏳ Render free tier sleeps after idle — first request may take ~30s, then it's instant.
+
+<details>
+<summary><b>🔑 Demo logins (click to show)</b></summary>
+
+| Role | Username | Password | Staff ID |
+|------|----------|----------|----------|
+| **Admin** | `admin` | `Admin@123` | `STAFF-0001` |
+| **Staff** | `staff` | `Staff@123` | `STAFF-0002` |
+
+Admin can create staff → staff can do everything except staff management.
+
+</details>
+
+---
+
+## 🎬 See it in 30 seconds
 
 ```
- Browser (React SPA)
-     │  HTTPS / JSON (REST)
-     ▼
- FastAPI backend ──► PostgreSQL
-     │                    ▲
-     │ background job     │ Alembic migrations
-     ▼                    │
- Overdue scheduler ──► SMS provider (mock for dev)
+Login as admin → Staff → Add staff (STAFF-0003)
+             → Students → Add student (STU-0000xx auto)
+             → Categories → Books → Add book (BOOK-0000xx)
+Login as staff → Issue Book → STU-000001 + BOOK-000001
+              Due date = Today + 20 days  (automatic)
+              Overdue? → /transactions/overdue + SMS in Notifications + Rs 10/day
+              Return → fine shown → Fines → Pay (Cash/UPI) → PAID
+              Audit Logs → every step recorded
 ```
 
-- **Frontend** (`frontend/`): React + Vite + TypeScript + Tailwind. It only renders UI; every business rule lives in the backend.
-- **Backend** (`backend/app/`): FastAPI. Routes are thin; business logic lives in `services/`. Auth is JWT (Bearer token).
-- **Database**: PostgreSQL in Docker/production, SQLite allowed for local dev/tests via `DATABASE_URL`.
-- **Overdue job**: an APScheduler interval job inside the backend process sends the one-time first-overdue SMS. Fines are *computed from dates on demand* — nothing increments daily, so reruns are safe.
+---
 
-## Technologies
+## 🖼️ Screenshots
 
-| Layer    | Stack                                                                 |
-|----------|-----------------------------------------------------------------------|
-| Frontend | React 18, Vite 6, TypeScript, Tailwind CSS 3, React Router 6, React Hook Form + Zod, axios, lucide-react |
-| Backend  | Python, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic, PyJWT, bcrypt, APScheduler |
-| Database | PostgreSQL 16 (Docker), SQLite for local dev/tests                    |
-| DevOps   | Docker, Docker Compose, Git/GitHub                                    |
+> Replace the placeholders with your own — just drop images in `docs/screenshots/` and they appear here.
 
-## Features
+| Dashboard | Issue & Due Date | Overdue & Fine |
+|-----------|------------------|----------------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Issue](docs/screenshots/issue.png) | ![Overdue](docs/screenshots/overdue.png) |
+| *Stats, issued today, overdue count* | *TXN-000001 · Due = Issue + 20 days* | *Badge OVERDUE + Rs 10/day live* |
 
-- Login/logout, current-user endpoint, password change, JWT auth, active/inactive accounts
-- Roles: **ADMIN** (can manage staff + everything) and **STAFF** (everything except staff management and admin creation)
-- Human-readable IDs everywhere: `STAFF-0001`, `STU-000001`, `BOOK-000001`, `CAT-000001`, `TXN-000001`
-- Students, staff, categories, books — full CRUD with search/filter
-- Category delete is rejected when books are assigned (409 with a clear message)
-- Book validation: required title/author, unique + plausible ISBN, copies ≥ 0, available ≤ total
-- Issue workflow with checks: student exists/active, book exists/active, copies available, borrowing limit (default 5), no duplicate active issue
-- **Due date = issue date + 20 days** (configurable via `LOAN_PERIOD_DAYS`)
-- Overdue detection (`today > due_date`), one-time overdue SMS, notification history, duplicate protection
-- **Fine = overdue days × Rs 10** (`FINE_PER_DAY`), computed by the backend, saved on return, never trusted from the frontend
-- Fine payments (Cash/UPI/Other), partial + full payments, overpayment rejected
-- Student page: current issues, due dates, overdue days, outstanding fines, borrowing + fine history
-- Dashboard stats, transactions list, overdue list, notifications, audit logs
-- Swagger docs at `/docs`, ReDoc at `/redoc`, OpenAPI at `/openapi.json`
+| Students | Books | Fines |
+|----------|-------|-------|
+| ![Students](docs/screenshots/students.png) | ![Books](docs/screenshots/books.png) | ![Fines](docs/screenshots/fines.png) |
 
-## Database design
+<details>
+<summary>📱 Mobile — works as PWA</summary>
 
-Tables: `users`, `staff`, `students`, `categories`, `books`, `book_transactions`, `fines`, `fine_payments`, `notifications`, `audit_logs` (+ `alembic_version`).
+- Responsive drawer, 44px tap targets, 16px inputs (no iOS zoom)
+- Add to Home Screen from phone browser — standalone, theme color `#2563eb`
+- LAN: `http://<your-PC-IP>:5173` when `vite --host 0.0.0.0`
 
-Key relationships: categories 1—many books · students 1—many transactions · books 1—many transactions · staff 1—many transactions (issued/collected by) · transaction 1—0/1 fine · fine 1—many payments. Every `User` (admin or staff) has one `Staff` profile row so "who did this" is uniform.
+</details>
 
-## API overview
+---
 
-Auth: `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me` · `POST /api/auth/change-password`
+## 🧭 How it works
 
-Students: `GET/POST /api/students` · `GET/PUT /api/students/{id}` · `PATCH /api/students/{id}/status` · `GET /api/students/{id}/history` · `GET /api/students/{id}/transactions` · `GET /api/students/{id}/fines`
+```mermaid
+flowchart LR
+  U[Browser<br/>React + Tailwind] -- HTTPS / JSON --> API[FastAPI<br/>services/]
+  API -- SQLAlchemy --> DB[(PostgreSQL)]
+  API -- APScheduler<br/>every 5 min --> JOB[Overdue Job]
+  JOB -- mock SMS --> SMS[(Notification<br/>history)]
+  DB --- MIG[Alembic<br/>migrations]
+```
 
-Staff (admin only): `GET/POST /api/staff` · `GET/PUT /api/staff/{id}` · `PATCH /api/staff/{id}/status` · `POST /api/staff/{id}/reset-password` · `DELETE /api/staff/{id}`
+- **Frontend** `frontend/` — only UI. No business rules.
+- **Backend** `backend/app/` — thin routes → `services/` where all rules live. JWT Bearer.
+- **DB** — Postgres in Docker/prod, SQLite for local/tests via `DATABASE_URL`.
+- **Overdue** — computed from dates (` (today - due).days * 10` ) — reruns are safe.
 
-Books: `GET/POST /api/books` · `GET/PUT/DELETE /api/books/{id}` (delete = soft-disable)
+---
 
-Categories: `GET/POST /api/categories` · `GET/PUT/DELETE /api/categories/{id}`
+## 🧩 Features
 
-Transactions: `GET /api/transactions` · `POST /api/transactions/issue` · `POST /api/transactions/{id}/return` · `GET /api/transactions/overdue`
+| Area | Highlights |
+|------|------------|
+| **Auth** | Login/logout/`/me`/change-password, JWT, bcrypt, active/inactive, rate-limit on login |
+| **Roles** | `ADMIN` (staff mgmt) vs `STAFF` (everything else) — enforced in backend, not just UI |
+| **IDs** | Human-readable everywhere: `STAFF-0001` `STU-000001` `BOOK-000001` `CAT-000001` `TXN-000001` |
+| **CRUD** | Students / Staff / Categories / Books — search, filter, pagination |
+| **Books** | Title/author required, unique ISBN (10/13), `available ≤ total`, soft-disable |
+| **Categories** | Delete blocked with `409` if books assigned — `Cannot delete category…` |
+| **Issue** | Checks: student active, book active, copies >0, limit 5, no duplicate active issue |
+| **20-day rule** | `due = issue + 20 days` (`LOAN_PERIOD_DAYS`) — shown on issue |
+| **Overdue** | `today > due` → badge + SMS once → `overdue_days * Rs 10` |
+| **Fines** | Saved on return, `UNPAID → PARTIALLY_PAID → PAID`, overpay blocked |
+| **Student page** | Current issues, due dates, overdue, outstanding fine, full history |
+| **Ops** | Dashboard, Transactions, Overdue list, Notifications, Audit Logs |
 
-Fines: `GET /api/fines` · `GET /api/fines/{id}` · `POST /api/fines/{id}/payment` · `POST /api/fines/{id}/pay-in-full`
+---
 
-Notifications: `GET /api/notifications` · `POST /api/notifications/test`
+## 🗄️ Database
 
-Misc: `GET /api/dashboard/stats` · `GET /api/audit-logs` · `GET /api/config` · `GET /api/health`
+`users` · `staff` · `students` · `categories` · `books` · `book_transactions` · `fines` · `fine_payments` · `notifications` · `audit_logs`
 
-## Local setup (without Docker)
+`categories 1—* books` · `students 1—* transactions` · `books 1—* transactions` · `staff 1—* transactions` · `transaction 1—0/1 fine` · `fine 1—* payments`
+
+Every `User` has one `Staff` row so “who did it” is uniform.
+
+---
+
+## 🔌 API — click to explore
+
+<details>
+<summary><b>Auth</b> · <code>POST /api/auth/login</code> · <code>GET /api/auth/me</code> · <code>POST /api/auth/change-password</code></summary>
+
+```http
+POST /api/auth/login  {username, password} → {access_token, user}
+GET  /api/auth/me  (Bearer) → User
+```
+
+</details>
+<details>
+<summary><b>Students</b> · <code>/api/students</code> + history & fines</summary>
+
+```
+GET/POST /api/students
+GET/PUT /api/students/{STU-000001}
+PATCH /api/students/{id}/status
+GET /api/students/{id}/history
+GET /api/students/{id}/fines
+```
+
+</details>
+<details>
+<summary><b>Books / Categories / Staff / Transactions / Fines</b></summary>
+
+```
+Books:       GET/POST /api/books · GET/PUT/DELETE /api/books/{BOOK-000001}
+Categories:  GET/POST /api/categories · DELETE blocked if books exist
+Staff*:      GET/POST /api/staff  (*admin only)
+Transactions: POST /api/transactions/issue {student_id, book_id}
+              POST /api/transactions/{TXN-000001}/return → {fine}
+              GET  /api/transactions/overdue
+Fines:       GET /api/fines · POST /api/fines/{id}/payment · POST /api/fines/{id}/pay-in-full
+```
+
+</details>
+
+Full interactive docs: **https://lms-backend-6xi9.onrender.com/docs** · ReDoc `/redoc` · OpenAPI `/openapi.json`
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Stack |
+|-------|-------|
+| **Frontend** | React 18 · Vite 6 · TypeScript · Tailwind 3 · React Router 6 · Hook Form + Zod · axios · lucide |
+| **Backend** | Python · FastAPI · SQLAlchemy 2 · Alembic · Pydantic · PyJWT · bcrypt · APScheduler |
+| **DB** | PostgreSQL 16 (Docker/Render) · SQLite for local/tests |
+| **DevOps** | Docker & Compose · GitHub · Vercel (frontend) · Render (backend) |
+
+---
+
+## ⚡ Quick Start
+
+### Local (without Docker)
 
 **Backend**
 ```bash
@@ -82,75 +195,67 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate        # Windows — or: source .venv/bin/activate
 pip install -r requirements.txt
-copy ..\.env.example ..\.env  # then edit values (or set DATABASE_URL directly)
-# SQLite quick start:
+copy ..\.env.example ..\.env  # edit if needed
 set DATABASE_URL=sqlite:///./lms.db
-python -m app.seed            # creates admin/staff/students/categories/books
-uvicorn app.main:app --reload # API at http://localhost:8000, docs at /docs
+python -m app.seed            # → admin / Admin@123 , staff / Staff@123
+uvicorn app.main:app --reload # http://localhost:8000  docs at /docs
 ```
 
 **Frontend**
 ```bash
 cd frontend
 npm install
-npm run dev                   # app at http://localhost:5173 (proxies /api to :8000)
+npm run dev                   # http://localhost:5173  proxies /api → :8000
+# LAN / phone: npm run dev -- --host 0.0.0.0  → http://<PC-IP>:5173
 ```
 
-## Docker (one-command startup)
+### 🐳 Docker (one command)
 
 ```bash
 cp .env.example .env   # review secrets first
 docker compose up --build
+# Frontend http://localhost:3000  Backend http://localhost:8000  Docs /docs
 ```
 
-- Frontend: http://localhost:3000 · Backend: http://localhost:8000 · Docs: http://localhost:8000/docs
-- The backend waits for Postgres (`pg_isready`), runs `alembic upgrade head`, seeds demo data when `RUN_SEED=true`, then starts uvicorn (single worker so the overdue scheduler runs exactly once).
-- Postgres data persists in the `pgdata` volume.
+Backend waits for Postgres (`pg_isready`), runs `alembic upgrade head`, seeds if `RUN_SEED=true`.
 
-## Environment variables
+---
 
-See `.env.example` (never commit `.env`): `DATABASE_URL`, `JWT_SECRET`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `CORS_ORIGINS`, `LOAN_PERIOD_DAYS` (20), `FINE_PER_DAY` (10), `MAX_BOOKS_PER_STUDENT` (5), `SMS_PROVIDER`, `SMS_API_KEY`, `SMS_SENDER_ID`, `AUTO_CREATE_TABLES`, `RUN_SEED`, plus Compose vars (`POSTGRES_*`, ports, `VITE_API_URL`).
+## 🔐 Env
 
-## Tests
+See `.env.example` — `DATABASE_URL` · `JWT_SECRET` · `CORS_ORIGINS` · `LOAN_PERIOD_DAYS=20` · `FINE_PER_DAY=10` · `MAX_BOOKS_PER_STUDENT=5` · `SMS_PROVIDER` · `AUTO_CREATE_TABLES` · `RUN_SEED` · `VITE_API_URL`
+
+---
+
+## ✅ Tests
 
 ```bash
 cd backend
-pytest tests -q     # 59 tests, uses throwaway in-memory SQLite + a frozen clock
+pytest tests -q     # 59 tests — in-memory SQLite + FrozenClock (no 20-day wait)
 ```
+Covers: login, RBAC, validation, category guard, issue/return, 20-day rule, stock, fines `0/1/4 days → Rs 0/10/40`, payments, overdue SMS once.
 
-Covered: login (good/bad/inactive), protected routes, admin-vs-staff permissions, book/category validation, category-delete guard, issue rules, 20-day due date, stock changes, return + duplicate-return guard, fines (0/1/4 days → Rs 0/10/40), payments + overpayment guard, overdue notice sent once, dynamic live fines. Time travel is done through `app/utils/clock.py` (`FrozenClock` in tests) — no waiting 20 real days.
+---
 
-Frontend: `npm run build` runs `tsc --noEmit` + Vite production build.
+## 🎓 5-minute mentor demo
 
-## Demo credentials (local/dev only)
+1. **Admin** → Staff → Add staff → `STAFF-0003`
+2. **Students** → Add → `STU-0000xx`
+3. **Categories → Books** → Add `BOOK-0000xx`
+4. **Staff** → Issue `STU-…` + `BOOK-…` → note `Due = Issue + 20 days`
+5. **Overdue** → badge + **Notifications** SMS + live `Rs 10/day`
+6. **Return** → `Fine: Rs 40` → **Fines** → Pay → `PAID`
+7. **Audit Logs** + **Swagger** live
 
-- Admin: `admin` / `Admin@123` → `STAFF-0001`
-- Staff: `staff` / `Staff@123` → `STAFF-0002`
+---
 
-## Mentor demo script (5 minutes)
+## 🚀 Deploy
 
-1. Login as admin → create staff (`STAFF-0003`).
-2. Create a student (`STU-000004`-style ID auto-generated).
-3. Create a category (e.g. `Programming`), create a book (`BOOK-0000xx`).
-4. Login as staff → **Issue** the book: note issue date and due date (+20 days).
-5. Overdue: open `/transactions/overdue` after the due date (or run the overdue job / use test data) → see status, SMS row in **Notifications**, live fine Rs 10/day.
-6. **Return** the book → fine shown (e.g. Rs 40 for 4 days).
-7. **Fines** → record payment (partial, then full) → status `PAID`.
-8. **Audit Logs** → complete history of every step. **Docs** → try it live in Swagger.
+- **Backend → Render**: `render.yaml` at root auto-creates DB + service, or manual Web Service (`Docker`, `Dockerfile` at root). Set `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS=https://library-management-system-dun-iota-40.vercel.app`, `AUTO_CREATE_TABLES=false`.
+- **Frontend → Vercel**: Root `frontend/`, Build `npm run build`, Output `dist`, Env `VITE_API_URL=https://lms-backend-6xi9.onrender.com` (SPA fallback in `frontend/vercel.json`).
 
-## Live Deployment
+---
 
-- **Frontend (Vercel):** https://library-management-system-dun-iota-40.vercel.app/
-- **Backend (Render):** https://lms-backend-6xi9.onrender.com
-- **API Docs (Swagger):** https://lms-backend-6xi9.onrender.com/docs
+## 🔮 Future
 
-> Render free tier sleeps after inactivity — first request after idle may take ~30s.
-
-## Deploying (beta)
-
-- **Backend → Render**: create a Web Service from `backend/` (build: `pip install -r requirements.txt`, start: `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`) or use the root `Dockerfile`. Add a Render Postgres database, set `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS=https://library-management-system-dun-iota-40.vercel.app`, `AUTO_CREATE_TABLES=false`. Or deploy via Blueprint using `render.yaml` at repo root.
-- **Frontend → Vercel**: import `frontend/`, build command `npm run build`, output `dist`, env `VITE_API_URL=https://lms-backend-6xi9.onrender.com`. SPA rewrites are in `frontend/vercel.json`.
-
-## Future improvements (not built)
-
-Barcode/QR scanning, email/WhatsApp notices, multi-branch support, reservations/waitlist, Excel/PDF exports, receipts, analytics, backups, admin-configurable loan/fine from the UI.
+Barcode/QR, email/WhatsApp, multi-branch, waitlist, Excel/PDF exports, receipts, analytics, backups, admin-configurable loan/fine in UI.
